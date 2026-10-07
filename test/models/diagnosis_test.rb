@@ -49,6 +49,13 @@ class DiagnosisTest < ActiveSupport::TestCase
     assert_match "gateway-mode-missing-vs-last-good", finding.detail
   end
 
+  test "a missing model credential points at the models page with its id" do
+    logs = log(%(embedded agent failed: Selected auth profile "anthropic:default" is unavailable.))
+    finding = Diagnosis.new(container, logs).findings.first
+    assert_equal :models, finding.link
+    assert_match "anthropic:default", finding.title
+  end
+
   test "no container suggests starting it" do
     assert_equal "start", Diagnosis.new(nil, "").findings.first.fix
   end

@@ -8,6 +8,9 @@ from a phone or laptop over Tailscale instead of SSHing in to run CLI commands.
 - **Open Control UI**: mints a one-time owner link (`openclaw dashboard --json`),
   so no token to paste and no pairing to approve.
 - **Devices**: approve or reject device pairing requests and chat (Telegram) pairing codes.
+- **Models**: saved model credentials, default model, auth problems. Paste an API key or
+  token for a profile (it goes to `openclaw models auth paste-api-key` on stdin), remove one.
+  Detects "Selected auth profile … is unavailable" in the logs and pre-fills that profile id.
 - **Config**: edit `openclaw.json`. Every save goes through `openclaw config validate`
   first, and previous versions are kept so you can restore one.
 - **Access**: `gateway.publicOrigin`, `controlUi.allowedOrigins` and `trustedProxies`.

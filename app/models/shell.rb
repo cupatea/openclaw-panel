@@ -16,11 +16,12 @@ module Shell
 
   # Runs to completion; stdout and stderr interleaved, ANSI-stripped. A timeout
   # becomes a failed result (exit 124) rather than an exception, so pages that
-  # call this synchronously can just render the output.
-  def capture(*argv, timeout: 30)
+  # call this synchronously can just render the output. `input` goes to stdin —
+  # how secrets reach the CLI without ever appearing in argv.
+  def capture(*argv, timeout: 30, input: nil)
     output = +""
     status = begin
-      stream(*argv, timeout: timeout) { |text| output << text }
+      stream(*argv, timeout: timeout, input: input) { |text| output << text }
     rescue Timeout => e
       output << "\n#{e.message}\n"
       124
@@ -30,11 +31,12 @@ module Shell
 
   # Yields whole lines of output as they arrive and returns the exit status.
   # Kills the process group and raises Shell::Timeout past `timeout` seconds.
-  def stream(*argv, timeout: 600)
+  def stream(*argv, timeout: 600, input: nil)
     deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
     buffer = +"".b
 
     Open3.popen2e(*argv.map(&:to_s), pgroup: true) do |stdin, out, wait|
+      stdin.write(input) if input
       stdin.close
 
       loop do

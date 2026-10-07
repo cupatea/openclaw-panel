@@ -1,0 +1,95 @@
+<% content_for :title, "Models" %>
+
+<div class="section-head">
+  <h1>Model credentials</h1>
+  <%= link_to "Refresh", models_path, class: "button link" %>
+</div>
+
+<% unless @container&.running? %>
+  <div class="warn"><p>The gateway isn't running, so it can't read or save credentials. <%= link_to "Go to status →", root_path %></p></div>
+<% else %>
+  <% auth = @status.is_a?(Hash) ? @status["auth"].to_h : {} %>
+  <% saved = Array(@saved.is_a?(Hash) ? @saved["profiles"] : nil) %>
+
+  <% if @missing.any? %>
+    <div class="warn">
+      <p><strong>Chats are failing: <%= @missing.map { |id| tag.code(id) }.to_sentence.html_safe %> <%= @missing.one? ? "isn't" : "aren't" %> in the credential store.</strong></p>
+      <p>Save the key below under that profile id. If one chat pinned it with <code>/model …@profile</code>, sending <code>/model default</code> in that chat also clears the pin.</p>
+    </div>
+  <% end %>
+
+  <% if @status.is_a?(Hash) %>
+    <section class="card">
+      <dl class="facts">
+        <div><dt>Default model</dt><dd class="mono"><%= @status["resolvedDefault"] || @status["defaultModel"] || "—" %></dd></div>
+        <div><dt>Fallbacks</dt><dd class="mono"><%= Array(@status["fallbacks"]).join(", ").presence || "none" %></dd></div>
+      </dl>
+      <% Array(auth["providers"]).each do |provider| %>
+        <% profiles = provider["profiles"].to_h %>
+        <p class="small">
+          <strong><%= provider["provider"] %></strong> ·
+          <%= pluralize(profiles["count"].to_i, "credential") %>
+          <% if Array(profiles["labels"]).any? %><span class="mono muted">(<%= profiles["labels"].join(", ") %>)</span><% end %>
+        </p>
+      <% end %>
+      <% problems = Array(auth["missingProvidersInUse"]).map { |p| "No credential for #{p.is_a?(Hash) ? p["provider"] : p}" } +
+                    Array(auth["modelRouteIssues"]).map { |issue| issue.is_a?(Hash) ? issue.values_at("provider", "message", "reason").compact.join(": ") : issue.to_s } +
+                    Array(auth["unusableProfiles"]).map { |p| p.is_a?(Hash) ? "#{p["profileId"] || p["id"]}: #{p["reason"] || p["status"]}" : p.to_s } %>
+      <% if problems.any? %>
+        <div class="errors"><ul><% problems.each do |problem| %><li><%= problem %></li><% end %></ul></div>
+      <% end %>
+    </section>
+  <% else %>
+    <pre class="terminal"><%= @status_result&.output %></pre>
+  <% end %>
+
+  <section>
+    <h2>Saved credentials</h2>
+    <% if saved.any? %>
+      <ul class="list">
+        <% saved.each do |profile| %>
+          <li class="list-row static">
+            <span class="list-main">
+              <span class="name mono"><%= profile["id"] %></span>
+              <span class="sub"><%= [ profile["provider"], profile["type"]&.tr("_", " "), (profile["label"] if profile["label"] != profile["id"]) ].compact_blank.join(" · ") %></span>
+            </span>
+            <%= button_to "Remove", model_profile_path(profile["id"]), method: :delete, class: "button secondary",
+                  form: { data: { confirm: "Remove #{profile["id"]}? Chats using it stop working until you add another." } } %>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <div class="empty"><p>No saved credentials for this agent.</p></div>
+    <% end %>
+  </section>
+
+  <section>
+    <h2>Save a key</h2>
+    <%= form_with url: models_path, class: "stack" do |form| %>
+      <div class="row">
+        <div>
+          <%= form.label :provider, "Provider" %>
+          <%= form.text_field :provider, value: params[:provider] || @missing.first&.split(":")&.first, list: "providers", required: true,
+                placeholder: "anthropic", autocapitalize: "off", autocorrect: "off", spellcheck: false %>
+          <datalist id="providers"><% ModelsController::PROVIDERS.each do |provider| %><option value="<%= provider %>"><% end %></datalist>
+        </div>
+        <div>
+          <%= form.label :kind, "Type" %>
+          <%= form.select :kind, [ [ "API key", "api_key" ], [ "Token (subscription)", "token" ] ] %>
+        </div>
+      </div>
+      <div>
+        <%= form.label :profile_id, "Profile id" %>
+        <%= form.text_field :profile_id, value: params[:profile_id] || @missing.first, class: "mono",
+              placeholder: "provider:manual", autocapitalize: "off", autocorrect: "off", spellcheck: false %>
+        <p class="help">Leave empty for <code>&lt;provider&gt;:manual</code>. Use the id from the warning above to fix a missing one.</p>
+      </div>
+      <div>
+        <%= form.label :secret, "Key" %>
+        <%= form.password_field :secret, required: true, autocomplete: "off", class: "mono" %>
+        <p class="help">Sent to <code>openclaw models auth paste-api-key</code> on stdin — never stored by the panel. The gateway restarts to pick it up.</p>
+      </div>
+      <%= form.submit "Save and restart gateway" %>
+    <% end %>
+  </section>
+<% end %>

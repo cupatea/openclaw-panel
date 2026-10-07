@@ -74,8 +74,8 @@ module Stack
       end
     end
 
-    def cli(*args, timeout: 60, **options)
-      result = Shell.capture(*cli_argv(*args, **options), timeout: timeout)
+    def cli(*args, timeout: 60, input: nil, **options)
+      result = Shell.capture(*cli_argv(*args, **options), timeout: timeout, input: input)
       result.with(output: result.output.gsub(RUN_NOISE, ""))
     end
 

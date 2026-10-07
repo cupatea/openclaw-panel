@@ -59,6 +59,11 @@ class Diagnosis
       message = line.sub(/\A\S+Z\s+/, "")
 
       case message
+      when /Selected auth profile "([^"]+)" is unavailable|selected auth profile is unavailable in this agent/
+        profile = $1
+        findings << Finding.new(title: "Chats fail: #{profile ? "model credential #{profile}" : "the selected model credential"} is missing",
+                                detail: "The config or a chat session asks for an auth profile that isn't in OpenClaw's credential store. Save its key again on the Models page#{" under #{profile}" if profile}.",
+                                link: :models)
       when /Gateway start blocked: (.*gateway\.mode.*)/
         findings << Finding.new(title: "The gateway refuses to start: gateway.mode isn't set",
                                 detail: $1.strip, fix: "fix_gateway_mode")

@@ -6,7 +6,7 @@ class AdminAuthenticationTest < ActionDispatch::IntegrationTest
   end
 
   test "every page needs a session" do
-    [ root_path, logs_path, devices_path, config_path, access_path, updates_path,
+    [ root_path, logs_path, devices_path, models_path, config_path, access_path, updates_path,
       environment_path, console_path, operations_path, setting_path, diagnostics_path ].each do |path|
       get path
       assert_redirected_to admin_login_path, "#{path} should require sign in"
@@ -24,6 +24,8 @@ class AdminAuthenticationTest < ActionDispatch::IntegrationTest
       -> { post approve_device_path("abc") },
       -> { post approve_pairing_path, params: { channel: "telegram", code: "ABC123" } },
       -> { post control_ui_path },
+      -> { post models_path, params: { provider: "openai", secret: "sk-x" } },
+      -> { delete model_profile_path("openai:manual") },
       -> { patch setting_path, params: { setting: { watchdog_enabled: "0" } } }
     ]
     requests.each do |request|

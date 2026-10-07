@@ -19,6 +19,9 @@ Rails.application.routes.draw do
   end
   post "pairings/approve" => "pairings#approve", as: :approve_pairing
 
+  resource :models, only: [ :show, :create ], controller: "models"
+  delete "models/profiles/:profile_id" => "models#destroy", as: :model_profile, constraints: { profile_id: %r{[^/]+} }, format: false
+
   resource :config, only: [ :show, :update ], controller: "config"
   resources :config_revisions, only: [ :index, :show ] do
     post :restore, on: :member
