@@ -1,0 +1,58 @@
+<% content_for :title, "Updates" %>
+<h1>Updates</h1>
+
+<section class="card">
+  <dl class="facts">
+    <div><dt>Running</dt><dd><%= @container&.version ? "v#{@container.version}" : "unknown" %></dd></div>
+    <div><dt>Image</dt><dd class="mono"><%= @container&.image || "—" %></dd></div>
+    <div><dt>Mode</dt><dd><%= @pinned_image ? "Pinned to #{@pinned_image.split(":").last}" : "Following the compose default (usually latest)" %></dd></div>
+  </dl>
+
+  <div class="actions wrap">
+    <%= operation_button "Pull & update", "update",
+          confirm: "Pull the image the compose file points at and recreate the gateway? If it doesn't come up healthy, the previous version gets pinned." %>
+    <% if @pinned_image && @pinning %>
+      <%= operation_button "Unpin (follow latest)", "switch_version", style: "secondary", params: { version: "latest" },
+            confirm: "Go back to the compose default image (latest)?" %>
+    <% end %>
+  </div>
+  <p class="help">
+    <code>latest</code> is rebuilt every week, so an innocent restart after a pull can land a new version. Pinning a release
+    means updates only happen when you pick one here.
+  </p>
+</section>
+
+<section>
+  <h2>Releases</h2>
+  <% unless @pinning %>
+    <div class="warn">
+      <p>Pinning needs the compose file to read the image from <code>.env</code>. Change its image line to:</p>
+      <p class="mono">image: ${OPENCLAW_IMAGE:-<%= Stack::IMAGE_REPOSITORY %>:latest}</p>
+    </div>
+  <% end %>
+
+  <% if @releases.any? %>
+    <ul class="list">
+      <% @releases.each do |tag| %>
+        <% current = @container&.version == tag %>
+        <li class="list-row static">
+          <span class="list-main">
+            <span class="name">v<%= tag %></span>
+            <% if current %><span class="sub">running now</span><% end %>
+          </span>
+          <% if @pinning && !current %>
+            <%= operation_button "Switch", "switch_version", style: "secondary", params: { version: tag },
+                  confirm: "Switch the gateway to v#{tag}?#{" Going back to an older version can fail if the newer one already migrated your data (exit code 78)." if older_version?(tag, @container&.version)}" %>
+          <% end %>
+        </li>
+      <% end %>
+    </ul>
+  <% else %>
+    <div class="empty"><p>Couldn't load the release list from GHCR.</p></div>
+  <% end %>
+</section>
+
+<section>
+  <h2>Past updates</h2>
+  <%= render "operations/list", operations: @operations %>
+</section>

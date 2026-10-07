@@ -1,0 +1,47 @@
+<% content_for :title, "Settings" %>
+<h1>Settings</h1>
+
+<% if @setting.errors.any? %>
+  <div class="errors"><ul><% @setting.errors.full_messages.each do |message| %><li><%= message %></li><% end %></ul></div>
+<% end %>
+
+<%= form_with model: @setting, url: setting_path, method: :patch, class: "stack" do |form| %>
+  <fieldset class="presets">
+    <legend>Watchdog</legend>
+    <p class="help">
+      Docker restarts the gateway when it crashes, but not when it hangs. The watchdog restarts it once it's been
+      unhealthy — or stopped without you asking — for a while. At most <%= Watchdog::MAX_RESTARTS %> times an hour.
+    </p>
+    <div class="checkbox">
+      <%= form.check_box :watchdog_enabled %>
+      <%= form.label :watchdog_enabled, "Restart the gateway automatically" %>
+    </div>
+    <div>
+      <%= form.label :watchdog_grace_minutes, "After how many minutes" %>
+      <%= form.number_field :watchdog_grace_minutes, in: 1..60 %>
+    </div>
+  </fieldset>
+
+  <fieldset class="presets">
+    <legend>Change admin password</legend>
+    <div>
+      <%= label_tag :current_password, "Current password" %>
+      <%= password_field_tag :current_password, nil, autocomplete: "current-password" %>
+    </div>
+    <div>
+      <%= label_tag :new_password, "New password" %>
+      <%= password_field_tag :new_password, nil, autocomplete: "new-password", minlength: 12 %>
+    </div>
+    <div>
+      <%= label_tag :new_password_confirmation, "Repeat new password" %>
+      <%= password_field_tag :new_password_confirmation, nil, autocomplete: "new-password", minlength: 12 %>
+    </div>
+  </fieldset>
+
+  <%= form.submit "Save" %>
+<% end %>
+
+<div class="note">
+  <p>OpenClaw folder: <span class="mono"><%= Stack.host_dir %></span></p>
+  <p>Compose file: <span class="mono"><%= File.basename(Stack.compose_file) %></span> · service <span class="mono"><%= Stack::GATEWAY %></span></p>
+</div>

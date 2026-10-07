@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+# Build the Docker image locally; optionally bump version, commit, and publish.
+#
+# Version format: vMAJOR.MINOR.PATCH stored in the VERSION file. PATCH
+# auto-increments on each --publish; the bump is skipped if the HEAD commit
+# message already matches the current VERSION (idempotent).
+#
+# Usage:
+#   bin/build              # docker build for the local arch (no commit, no push)
+#   bin/build --publish    # bump VERSION (PATCH+1), commit, build linux/amd64, push
+#
+# One-time auth before first --publish (token needs `write:packages`):
+#   gh auth token | docker login ghcr.io -u cupatea --password-stdin
+
+set -euo pipefail
+
+# Force plain (line-by-line) progress output everywhere — the default TTY UI
+# can look like the build is frozen when it's actually doing real work.
+export BUILDKIT_PROGRESS=plain
+export DOCKER_BUILDKIT=1
+
+cd "$(dirname "$0")/.."
+
+IMAGE="ghcr.io/cupatea/openclaw-panel"
+DOCKER_VERSION="$(cat .docker-version)"
+RUBY_VERSION="$(cat .ruby-version | sed 's/^ruby-//')"
+PUBLISH=0
+
+for arg in "$@"; do
+  case "$arg" in
+    --publish) PUBLISH=1 ;;
+    -h|--help) sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    *) echo "unknown arg: $arg" >&2; exit 1 ;;
+  esac
+done
+
+if [[ $PUBLISH -eq 0 ]]; then
+  echo "▶ docker build $IMAGE:latest (ruby $RUBY_VERSION, docker $DOCKER_VERSION, native arch)"
+  exec docker build \
+    --progress=plain \
+    --build-arg "RUBY_VERSION=$RUBY_VERSION" \
+    --build-arg "DOCKER_VERSION=$DOCKER_VERSION" \
+    --tag "$IMAGE:latest" \
+    .
+fi
+
+# ── --publish from here ─────────────────────────────────────────────
+
+if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
+  echo "Warning: uncommitted changes — they won't be included in the version commit." >&2
+fi
+
+VERSION_FILE="VERSION"
+CURRENT_VERSION="$(cat "$VERSION_FILE")"
+HEAD_MSG="$(git log -1 --format='%s' 2>/dev/null || echo '')"
+
+if [[ "$HEAD_MSG" == "$CURRENT_VERSION" ]]; then
+  echo "Version $CURRENT_VERSION (already committed — skipping bump)"
+else
+  VERSION_NUM="${CURRENT_VERSION#v}"
+  IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION_NUM"
+  PATCH=$((PATCH + 1))
+  NEW_VERSION="v$MAJOR.$MINOR.$PATCH"
+  echo "$NEW_VERSION" > "$VERSION_FILE"
+  git add "$VERSION_FILE"
+  git commit -m "$NEW_VERSION" --no-verify
+  echo "Version $CURRENT_VERSION → $NEW_VERSION"
+  CURRENT_VERSION="$NEW_VERSION"
+fi
+
+PLATFORMS="${PLATFORMS:-linux/amd64}"
+
+# Bootstrap the buildx builder up front. Without this, the FIRST `buildx build`
+# of a session silently spins one up before printing anything — which is what
+# the "frozen for several minutes" feeling is.
+echo "▶ Bootstrapping buildx builder…"
+docker buildx inspect --bootstrap
+
+echo "▶ docker buildx build $IMAGE:$CURRENT_VERSION (ruby $RUBY_VERSION, docker $DOCKER_VERSION, $PLATFORMS, push to GHCR)"
+exec docker buildx build \
+  --progress=plain \
+  --platform "$PLATFORMS" \
+  --build-arg "RUBY_VERSION=$RUBY_VERSION" \
+  --build-arg "DOCKER_VERSION=$DOCKER_VERSION" \
+  --tag "$IMAGE:latest" \
+  --tag "$IMAGE:$CURRENT_VERSION" \
+  --push \
+  .

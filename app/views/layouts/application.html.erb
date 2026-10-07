@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= [ content_for(:title), "OpenClaw panel" ].compact.join(" · ") %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#fafaf9" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0c0a09" media="(prefers-color-scheme: dark)">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/icon.png">
+    <%= stylesheet_link_tag :app %>
+    <%= javascript_include_tag "panel", defer: true %>
+  </head>
+
+  <body class="<%= content_for(:body_class) %>">
+    <header>
+      <div>
+        <%= link_to root_path, class: "brand" do %>
+          <span class="brand-mark" aria-hidden="true">🦞</span> OpenClaw panel
+        <% end %>
+        <% if admin_authenticated? %>
+          <%= button_to "Sign out", admin_logout_path, method: :delete, class: "nav-item signout" %>
+        <% end %>
+      </div>
+      <% if admin_authenticated? %>
+        <nav aria-label="Sections">
+          <%= nav_link "Status", root_path %>
+          <%= nav_link "Logs", logs_path %>
+          <%= nav_link "Devices", devices_path %>
+          <%= nav_link "Config", config_path, also: [ config_revisions_path ] %>
+          <%= nav_link "Access", access_path %>
+          <%= nav_link "Updates", updates_path %>
+          <%= nav_link "Env", environment_path %>
+          <%= nav_link "Console", console_path %>
+          <%= nav_link "History", operations_path %>
+          <%= nav_link "Settings", setting_path %>
+        </nav>
+      <% end %>
+    </header>
+
+    <main>
+      <% if notice %><div class="flash notice" role="status"><%= notice %></div><% end %>
+      <% if alert %><div class="flash alert" role="alert"><%= alert %></div><% end %>
+
+      <%= yield %>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,17 @@
+<% content_for :title, "Logs" %>
+
+<div class="section-head">
+  <h1>Gateway logs</h1>
+  <div class="actions">
+    <% LogsController::TAILS.each do |tail| %>
+      <%= link_to tail, logs_path(tail: tail), class: [ "chip", ("current" if tail == @tail) ] %>
+    <% end %>
+  </div>
+</div>
+
+<label class="checkbox live-toggle">
+  <input type="checkbox" id="logs-live" data-source="<%= logs_path(tail: @tail, format: :text) %>">
+  <span>Follow (refresh every 3 seconds)</span>
+</label>
+
+<pre class="terminal tall" id="logs-output" data-autoscroll><%= @logs.presence || "No output." %></pre>

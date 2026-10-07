@@ -1,0 +1,14 @@
+<% content_for :title, "Config version" %>
+
+<div class="section-head">
+  <h1>Version from <%= l(@revision.created_at, format: :short) %></h1>
+</div>
+<p class="muted small"><%= @revision.note %></p>
+
+<pre class="terminal tall"><%= @revision.content %></pre>
+
+<div class="actions wrap">
+  <%= link_to "← All versions", config_revisions_path, class: "button secondary" %>
+  <%= button_to "Restore this version", restore_config_revision_path(@revision), class: "button",
+        form: { data: { confirm: "Replace the current openclaw.json with this version? The current one is kept as a version too." } } %>
+</div>

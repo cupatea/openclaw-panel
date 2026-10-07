@@ -1,0 +1,57 @@
+<% content_for :title, "Access" %>
+<h1>Control UI access</h1>
+
+<p class="help">
+  A blank page or “origin not allowed” on your domain almost always comes down to these three settings.
+  They apply without a restart.
+</p>
+
+<% if @observed_proxies.any? %>
+  <div class="warn">
+    <p><strong>The gateway is refusing proxied requests from <%= @observed_proxies.to_sentence %>.</strong></p>
+    <p>That's your reverse proxy (Caddy) as the gateway sees it. Until it's trusted, every page and script behind your domain gets a 403 — the white screen.</p>
+    <div class="actions wrap">
+      <% @observed_proxies.each do |address| %>
+        <%= button_to "Trust #{address}", trust_proxy_access_path, params: { address: address }, class: "button" %>
+      <% end %>
+    </div>
+  </div>
+<% end %>
+
+<% if @setting.errors.any? %>
+  <div class="errors"><ul><% @setting.errors.full_messages.each do |message| %><li><%= message %></li><% end %></ul></div>
+<% end %>
+
+<%= form_with url: access_path, method: :patch, class: "stack" do |form| %>
+  <div>
+    <%= form.label :control_ui_url, "Control UI address" %>
+    <%= form.url_field :control_ui_url, value: @setting.control_ui_url, placeholder: "https://claw.example.com",
+          autocapitalize: "off", autocorrect: "off", spellcheck: false %>
+    <p class="help">
+      Where you open OpenClaw in the browser. An HTTPS address becomes <code>gateway.publicOrigin</code>
+      (currently <code><%= @public_origin.presence || "unset" %></code>); it's also where “Open Control UI” takes you.
+    </p>
+  </div>
+
+  <div>
+    <%= form.label :allowed_origins, "Other allowed origins" %>
+    <%= form.text_area :allowed_origins, value: @allowed_origins.join("\n"), rows: 3, class: "mono",
+          placeholder: "One per line, e.g. http://nas.tailnet.ts.net:18789", autocapitalize: "off", spellcheck: false %>
+    <p class="help">
+      <code>gateway.controlUi.allowedOrigins</code>. Leave empty to allow just the address above.
+      A list here replaces that default, so the address is added to it automatically.
+    </p>
+  </div>
+
+  <div>
+    <%= form.label :trusted_proxies, "Trusted proxies" %>
+    <%= form.text_area :trusted_proxies, value: @trusted_proxies.join("\n"), rows: 2, class: "mono",
+          placeholder: "One IP or CIDR per line, e.g. 172.18.0.1", autocapitalize: "off", spellcheck: false %>
+    <p class="help">
+      <code>gateway.trustedProxies</code>: the address your reverse proxy connects from. Keep it narrow —
+      only what the warning above shows, or your proxy container's network.
+    </p>
+  </div>
+
+  <%= form.submit "Save" %>
+<% end %>

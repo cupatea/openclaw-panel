@@ -1,0 +1,21 @@
+<% if operations.any? %>
+  <ul class="list">
+    <% operations.each do |operation| %>
+      <li>
+        <%= link_to operation_path(operation), class: "list-row" do %>
+          <span class="list-main">
+            <span class="name"><%= operation.title %></span>
+            <span class="sub">
+              <%= time_ago_in_words(operation.created_at) %> ago
+              <% if operation.trigger == "watchdog" %>· by the watchdog<% end %>
+              <% if operation.duration %>· took <%= short_duration(operation.duration) %><% end %>
+            </span>
+          </span>
+          <%= status_badge(operation) %>
+        <% end %>
+      </li>
+    <% end %>
+  </ul>
+<% else %>
+  <div class="empty"><p>Nothing yet.</p></div>
+<% end %>

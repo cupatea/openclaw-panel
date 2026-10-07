@@ -1,0 +1,32 @@
+<% content_for :title, "Config" %>
+
+<div class="section-head">
+  <h1>openclaw.json</h1>
+  <%= link_to "Previous versions →", config_revisions_path, class: "button link" %>
+</div>
+
+<% if @validation && !@validation.valid? %>
+  <div class="errors">
+    <p>Not saved — OpenClaw rejected it:</p>
+    <ul>
+      <% @validation.issues.each do |issue| %><li class="mono"><%= issue %></li><% end %>
+    </ul>
+  </div>
+<% end %>
+
+<% if @content.nil? %>
+  <div class="empty"><p>No config file at <code><%= ConfigFile.path %></code> yet. The gateway creates it on first start.</p></div>
+<% else %>
+  <%= form_with url: config_path, method: :patch, class: "stack" do |form| %>
+    <%= form.text_area :content, value: @content, class: "mono code-editor", rows: 28,
+          spellcheck: false, autocapitalize: "off", autocorrect: "off", wrap: "off" %>
+    <p class="help">
+      JSON5 is fine (comments, trailing commas) — but OpenClaw rewrites the file as plain JSON whenever it saves it.
+      Every save is checked with <code>openclaw config validate</code> first; the old version is kept.
+    </p>
+    <div class="actions wrap">
+      <%= form.submit "Save" %>
+      <%= form.submit "Save and restart", name: "restart", class: "secondary" %>
+    </div>
+  <% end %>
+<% end %>

@@ -1,0 +1,25 @@
+<% content_for :title, @operation.title %>
+
+<div class="section-head">
+  <h1><%= @operation.title %></h1>
+  <%= status_badge(@operation) %>
+</div>
+
+<p class="muted small">
+  Started <%= l(@operation.created_at, format: :short) %>
+  <% if @operation.trigger == "watchdog" %>by the watchdog<% end %>
+  <% if @operation.duration %>· <%= short_duration(@operation.duration) %><% end %>
+</p>
+
+<pre class="terminal" id="operation-output"
+     <% if @operation.active? %>data-poll="<%= operation_path(@operation, format: :json) %>"<% end %>><%= @operation.output.presence || "Waiting to start…" %></pre>
+
+<div class="actions wrap">
+  <%= link_to "← Status", root_path, class: "button secondary" %>
+  <% if @operation.kind == "cli" && !@operation.active? %>
+    <%= link_to "Run again", console_path(command: @operation.command_line), class: "button secondary" %>
+  <% end %>
+  <% if !@operation.active? && !@operation.succeeded? %>
+    <%= link_to "Logs", logs_path, class: "button secondary" %>
+  <% end %>
+</div>

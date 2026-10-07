@@ -1,0 +1,20 @@
+#!/bin/bash -e
+
+# Auto-provision SECRET_KEY_BASE so users don't have to pass an .env file.
+# Persists in the storage volume — survives image upgrades.
+KEY_FILE=/rails/storage/.secret_key_base
+if [ -z "${SECRET_KEY_BASE:-}" ]; then
+  if [ ! -s "$KEY_FILE" ]; then
+    mkdir -p "$(dirname "$KEY_FILE")"
+    ruby -rsecurerandom -e 'puts SecureRandom.hex(64)' > "$KEY_FILE"
+  fi
+  export SECRET_KEY_BASE="$(cat "$KEY_FILE")"
+fi
+
+# Initialize/migrate the DB before booting the web server (puma). Skipped for
+# one-off commands like `rails console` so they don't trigger a migration.
+case "$*" in
+  *puma*) ./bin/rails db:prepare ;;
+esac
+
+exec "$@"

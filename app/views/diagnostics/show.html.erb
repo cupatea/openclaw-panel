@@ -1,0 +1,77 @@
+<% content_for :title, "Diagnostics" %>
+<h1>Diagnostics</h1>
+
+<section>
+  <h2>Container</h2>
+  <% if @container %>
+    <dl class="facts card">
+      <div><dt>Name</dt><dd class="mono"><%= @container.name %></dd></div>
+      <div><dt>Condition</dt><dd><%= condition_badge(@container) %> <%= @container.summary %></dd></div>
+      <div><dt>Started</dt><dd><%= @container.started_at ? l(@container.started_at, format: :short) : "—" %></dd></div>
+      <div><dt>Last exit</dt><dd><%= @container.exit_code %><%= " · OOM killed" if @container.oom_killed? %><%= " · #{@container.error}" if @container.error %></dd></div>
+      <div><dt>Image</dt><dd class="mono"><%= @container.image %> (<%= @container.image_id %>)</dd></div>
+      <% if @container.last_health_output %>
+        <div><dt>Health probe</dt><dd class="mono"><%= @container.last_health_output %></dd></div>
+      <% end %>
+    </dl>
+  <% else %>
+    <div class="empty"><p>The gateway container doesn't exist.</p></div>
+  <% end %>
+</section>
+
+<section>
+  <h2>Problems found in logs</h2>
+  <% if @diagnosis.findings.any? %>
+    <div class="findings">
+      <% @diagnosis.findings.each do |finding| %>
+        <article class="finding">
+          <h3><%= finding.title %></h3>
+          <% if finding.detail %><p><%= finding.detail %></p><% end %>
+          <div class="actions"><%= finding_action(finding) %></div>
+        </article>
+      <% end %>
+    </div>
+  <% else %>
+    <p class="muted">None.</p>
+  <% end %>
+</section>
+
+<section>
+  <h2>openclaw doctor --lint</h2>
+  <% if @lint.is_a?(Hash) %>
+    <% findings = Array(@lint["findings"]) %>
+    <p class="muted small"><%= @lint["checksRun"] %> checks run<%= ", #{@lint["checksSkipped"]} skipped" if @lint["checksSkipped"] %>.</p>
+    <% if findings.any? %>
+      <ul class="list">
+        <% findings.each do |finding| %>
+          <li class="list-row static">
+            <span class="list-main">
+              <span class="name"><%= finding["message"] %></span>
+              <span class="sub mono"><%= [ finding["checkId"], finding["path"] ].compact.join(" · ") %></span>
+              <% if finding["fixHint"] %><span class="sub"><%= finding["fixHint"] %></span><% end %>
+            </span>
+            <span class="badge <%= finding["severity"] == "error" ? "failed" : "warning" %>"><%= finding["severity"] %></span>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <p class="all-good">Doctor found nothing to fix.</p>
+    <% end %>
+  <% else %>
+    <pre class="terminal"><%= @lint_result.output %></pre>
+  <% end %>
+</section>
+
+<% if @health.is_a?(Hash) %>
+  <section>
+    <h2>Gateway health</h2>
+    <dl class="facts card">
+      <div><dt>OK</dt><dd><%= @health["ok"] ? "yes" : "no" %></dd></div>
+      <div><dt>Plugins</dt><dd><%= Array(@health.dig("plugins", "loaded")).join(", ").presence || "—" %></dd></div>
+      <% errors = Array(@health.dig("plugins", "errors")) %>
+      <% if errors.any? %><div><dt>Plugin errors</dt><dd class="mono"><%= errors.map { |e| e.is_a?(Hash) ? e.values.join(": ") : e }.join("; ") %></dd></div><% end %>
+      <div><dt>Channels</dt><dd><%= Array(@health["channelOrder"]).join(", ").presence || "none configured" %></dd></div>
+      <div><dt>Config reload</dt><dd><%= @health.dig("configReload", "hotReloadStatus") || "—" %></dd></div>
+    </dl>
+  </section>
+<% end %>

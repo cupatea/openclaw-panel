@@ -1,0 +1,24 @@
+<% content_for :title, "Console" %>
+<h1>Console</h1>
+<p class="help">
+  Runs <code>openclaw …</code> inside the gateway container. For anything the other pages don't cover.
+  Interactive commands (<code>onboard</code>, <code>configure</code>, <code>tui</code>) need a real terminal.
+</p>
+
+<%= form_with url: console_path, class: "console-form" do |form| %>
+  <span class="prompt mono" aria-hidden="true">openclaw</span>
+  <%= form.text_field :command, value: @command, class: "mono", placeholder: "status --all", required: true,
+        autocapitalize: "off", autocorrect: "off", spellcheck: false, autofocus: @command.present?, aria: { label: "Command" } %>
+  <%= form.submit "Run" %>
+<% end %>
+
+<div class="chips">
+  <% ConsoleController::PRESETS.each do |label, command| %>
+    <%= button_to label, console_path, params: { command: command }, class: "chip" %>
+  <% end %>
+</div>
+
+<section>
+  <h2>Recent commands</h2>
+  <%= render "operations/list", operations: @operations %>
+</section>

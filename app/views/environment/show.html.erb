@@ -1,0 +1,51 @@
+<% content_for :title, "Environment" %>
+<h1>.env</h1>
+<p class="help">
+  Variables for the compose file — tokens and the pinned image. Saving writes <code>.env</code>; apply to recreate the
+  gateway with the new values.
+</p>
+
+<%= form_with url: environment_path, method: :patch, class: "stack" do |form| %>
+  <% if @entries.any? %>
+    <% @entries.each do |key, value| %>
+      <div class="env-row">
+        <label for="env_<%= key %>" class="mono"><%= key %></label>
+        <% if EnvFile.secret?(key) %>
+          <%= password_field_tag "env[#{key}]", nil, id: "env_#{key}", class: "mono",
+                placeholder: value.present? ? "•••••• set · empty keeps it" : "not set",
+                autocomplete: "off" %>
+        <% else %>
+          <%= text_field_tag "env[#{key}]", value, id: "env_#{key}", class: "mono", autocapitalize: "off", spellcheck: false %>
+        <% end %>
+        <label class="checkbox remove"><%= check_box_tag "remove[]", key, false, id: "remove_#{key}" %> <span>remove</span></label>
+      </div>
+    <% end %>
+  <% else %>
+    <div class="empty"><p>No <code>.env</code> yet.</p></div>
+  <% end %>
+
+  <fieldset class="presets">
+    <legend>Add a variable</legend>
+    <div class="row">
+      <div>
+        <%= label_tag :new_key, "Name" %>
+        <%= text_field_tag :new_key, @missing.first, class: "mono", list: "missing-keys", autocapitalize: "characters", spellcheck: false %>
+        <datalist id="missing-keys"><% @suggestions.each do |key| %><option value="<%= key %>"><% end %></datalist>
+      </div>
+      <div>
+        <%= label_tag :new_value, "Value" %>
+        <%= text_field_tag :new_value, nil, class: "mono", autocomplete: "off", autocapitalize: "off", spellcheck: false %>
+      </div>
+    </div>
+    <% if @missing.any? %>
+      <p class="help">Your compose file reads these but <code>.env</code> doesn't set them: <span class="mono"><%= @missing.join(", ") %></span></p>
+    <% end %>
+  </fieldset>
+
+  <%= form.submit "Save .env" %>
+<% end %>
+
+<div class="note">
+  <%= operation_button "Apply (recreate gateway)", "start", style: "secondary",
+        confirm: "Recreate the gateway with the current .env?" %>
+</div>

@@ -1,0 +1,21 @@
+<% content_for :title, "Config history" %>
+<h1>Previous versions of openclaw.json</h1>
+<p class="help">Saved by the panel right before it changed the file. The last <%= ConfigRevision::KEEP %> are kept.</p>
+
+<% if @revisions.any? %>
+  <ul class="list">
+    <% @revisions.each do |revision| %>
+      <li>
+        <%= link_to config_revision_path(revision), class: "list-row" do %>
+          <span class="list-main">
+            <span class="name"><%= l(revision.created_at, format: :short) %></span>
+            <span class="sub"><%= revision.note %> · <%= number_to_human_size(revision.content.bytesize) %></span>
+          </span>
+          <span class="go">View →</span>
+        <% end %>
+      </li>
+    <% end %>
+  </ul>
+<% else %>
+  <div class="empty"><p>No previous versions yet.</p></div>
+<% end %>

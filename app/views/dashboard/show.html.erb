@@ -1,0 +1,84 @@
+<% content_for :title, "Status" %>
+
+<section class="card status-card">
+  <div class="status-head">
+    <div>
+      <%= condition_badge(@container) %>
+      <% if @container&.version %><span class="version">v<%= @container.version %></span><% end %>
+    </div>
+    <%= link_to "Refresh", root_path, class: "button link" %>
+  </div>
+
+  <% if @container %>
+    <dl class="facts">
+      <div><dt>State</dt><dd><%= @container.summary %></dd></div>
+      <div><dt>Uptime</dt><dd><%= short_duration(@container.uptime) %></dd></div>
+      <div><dt>Restarts</dt><dd><%= @container.restart_count %></dd></div>
+      <div><dt>Image</dt><dd class="mono"><%= @container.image %></dd></div>
+    </dl>
+  <% else %>
+    <p class="muted">No <code><%= Stack::GATEWAY %></code> container yet — start it to create it from the compose file.</p>
+  <% end %>
+
+  <% if @setting.control_ui_url.present? && @container&.running? %>
+    <%= button_to control_ui_path, class: "button primary-wide", form: { target: "_blank" } do %>
+      Open Control UI ↗
+    <% end %>
+  <% end %>
+
+  <div class="actions wrap">
+    <% if @container.nil? || @container.down? %>
+      <%= operation_button "Start", "start" %>
+    <% else %>
+      <%= operation_button "Restart", "restart", confirm: "Restart the gateway? Chats pause for ~30 seconds." %>
+      <%= operation_button "Stop", "stop", style: "secondary", confirm: "Stop the gateway? The watchdog won't start it again until you do." %>
+    <% end %>
+    <%= operation_button "Repair", "repair", style: "secondary",
+          confirm: "Stop the gateway, run `openclaw doctor --repair`, and start it again?" %>
+    <%= operation_button "Recreate", "recreate", style: "secondary",
+          confirm: "Recreate the gateway container from the compose file and .env?" %>
+  </div>
+</section>
+
+<% if @active_operation %>
+  <%= link_to operation_path(@active_operation), class: "running-banner" do %>
+    <span class="spinner" aria-hidden="true"></span>
+    <span><strong><%= @active_operation.title %></strong> is running…</span>
+    <span class="go">View →</span>
+  <% end %>
+<% end %>
+
+<% if @diagnosis.findings.any? %>
+  <section>
+    <h2>Problems</h2>
+    <div class="findings">
+      <% @diagnosis.findings.each do |finding| %>
+        <article class="finding">
+          <h3><%= finding.title %></h3>
+          <% if finding.detail %><p><%= finding.detail %></p><% end %>
+          <div class="actions"><%= finding_action(finding) %></div>
+        </article>
+      <% end %>
+    </div>
+  </section>
+<% elsif @container&.healthy? %>
+  <p class="all-good">No problems found in the recent logs.</p>
+<% end %>
+
+<section>
+  <div class="section-head">
+    <h2>Recent activity</h2>
+    <%= link_to "All →", operations_path, class: "button link" %>
+  </div>
+  <%= render "operations/list", operations: @operations %>
+</section>
+
+<p class="note">
+  <% if @setting.watchdog_enabled? %>
+    Watchdog is on: it restarts the gateway after <%= pluralize(@setting.watchdog_grace_minutes, "minute") %> unhealthy or unexpectedly stopped.
+    <% if Watchdog.gave_up? %><strong>It already restarted it <%= Watchdog::MAX_RESTARTS %> times this hour and is holding off.</strong><% end %>
+  <% else %>
+    Watchdog is off.
+  <% end %>
+  <%= link_to "Settings", setting_path %> · <%= link_to "Full diagnostics", diagnostics_path %>
+</p>

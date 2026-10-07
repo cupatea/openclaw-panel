@@ -1,0 +1,103 @@
+<% content_for :title, "Devices" %>
+
+<div class="section-head">
+  <h1>Devices &amp; pairing</h1>
+  <%= link_to "Refresh", devices_path, class: "button link" %>
+</div>
+
+<% unless @container&.running? %>
+  <div class="warn"><p>The gateway isn't running, so it can't list or approve anything. <%= link_to "Go to status →", root_path %></p></div>
+<% else %>
+  <% pending = Array(@devices.is_a?(Hash) ? @devices["pending"] : nil) %>
+  <% paired = Array(@devices.is_a?(Hash) ? @devices["paired"] : nil) %>
+
+  <section>
+    <h2>Waiting for approval</h2>
+    <p class="help">Browsers opening the Control UI through your domain, and apps or nodes connecting to the gateway, ask to pair first (“pairing required”).</p>
+    <% if !@devices.is_a?(Hash) %>
+      <pre class="terminal"><%= @devices_result&.output %></pre>
+    <% elsif pending.any? %>
+      <ul class="list">
+        <% pending.each do |request| %>
+          <li class="list-row static">
+            <span class="list-main">
+              <span class="name"><%= request["displayName"].presence || request["clientId"].presence || request["deviceId"].to_s.first(16) %></span>
+              <span class="sub">
+                <%= [ request["platform"], request["clientMode"], request["remoteIp"] ].compact_blank.join(" · ") %>
+                <% roles = Array(request["roles"]).presence || Array(request["role"]) %>
+                <% if roles.any? %>· wants <%= roles.join(", ") %><% end %>
+                <% if request["ts"].is_a?(Numeric) %>· <%= time_ago_in_words(Time.at(request["ts"] / 1000.0)) %> ago<% end %>
+                <% if request["isRepair"] %>· re-pairing<% end %>
+              </span>
+            </span>
+            <span class="actions">
+              <%= button_to "Approve", approve_device_path(request["requestId"]), class: "button" %>
+              <%= button_to "Reject", reject_device_path(request["requestId"]), class: "button secondary",
+                    form: { data: { confirm: "Reject this pairing request?" } } %>
+            </span>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <div class="empty"><p>No pending requests.</p><p>Opened the Control UI and it says “pairing required”? Refresh this page.</p></div>
+    <% end %>
+  </section>
+
+  <section>
+    <h2>Chat pairing codes</h2>
+    <p class="help">When someone new messages your bot (e.g. on Telegram), it replies with a pairing code. Approve it here.</p>
+    <% requests = @pairings.flat_map { |pairing| Array(pairing["requests"]).map { |request| [ pairing["channel"], request ] } } %>
+    <% if requests.any? %>
+      <ul class="list">
+        <% requests.each do |channel, request| %>
+          <% meta = request["meta"].is_a?(Hash) ? request["meta"] : {} %>
+          <li class="list-row static">
+            <span class="list-main">
+              <span class="name"><span class="mono"><%= request["code"] %></span> · <%= channel %></span>
+              <span class="sub"><%= meta.values_at("username", "displayName", "name", "senderId").compact_blank.uniq.join(" · ").presence || request["id"] %></span>
+            </span>
+            <%= button_to "Approve", approve_pairing_path, params: { channel: channel, code: request["code"] }, class: "button" %>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <div class="empty"><p>No pending codes<%= " (no chat channels with DM pairing are configured)" if @pairings.empty? %>.</p></div>
+    <% end %>
+
+    <%= form_with url: approve_pairing_path, class: "inline-form" do |form| %>
+      <div>
+        <%= form.label :channel, "Channel" %>
+        <%= form.text_field :channel, value: @pairings.first&.dig("channel") || "telegram", list: "pairing-channels",
+              autocapitalize: "off", autocorrect: "off", spellcheck: false %>
+        <datalist id="pairing-channels">
+          <% @pairings.each do |pairing| %><option value="<%= pairing["channel"] %>"><% end %>
+        </datalist>
+      </div>
+      <div>
+        <%= form.label :code, "Code" %>
+        <%= form.text_field :code, class: "mono", placeholder: "e.g. 7KD2QX", autocapitalize: "characters", autocorrect: "off", spellcheck: false, required: true %>
+      </div>
+      <%= form.submit "Approve code" %>
+    <% end %>
+  </section>
+
+  <section>
+    <h2>Paired</h2>
+    <% if paired.any? %>
+      <ul class="list">
+        <% paired.each do |device| %>
+          <li class="list-row static">
+            <span class="list-main">
+              <span class="name"><%= device["operatorLabel"].presence || device["displayName"].presence || device["clientId"].presence || device["deviceId"].to_s.first(16) %></span>
+              <span class="sub">
+                <%= [ Array(device["roles"]).join(", ").presence, device["remoteIp"] ].compact_blank.join(" · ") %>
+              </span>
+            </span>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <div class="empty"><p>No paired devices.</p></div>
+    <% end %>
+  </section>
+<% end %>
