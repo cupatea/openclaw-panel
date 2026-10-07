@@ -10,7 +10,7 @@
 #   bin/build --publish    # bump VERSION (PATCH+1), commit, build linux/amd64, push
 #
 # One-time auth before first --publish (token needs `write:packages`):
-#   gh auth token | docker login ghcr.io -u cupatea --password-stdin
+#   docker login registry.bulka.in   (GitLab CI normally builds and pushes instead)
 
 set -euo pipefail
 
@@ -21,7 +21,7 @@ export DOCKER_BUILDKIT=1
 
 cd "$(dirname "$0")/.."
 
-IMAGE="ghcr.io/cupatea/openclaw-panel"
+IMAGE="registry.bulka.in/cupatea/openclaw-panel/main"
 DOCKER_VERSION="$(cat .docker-version)"
 RUBY_VERSION="$(cat .ruby-version | sed 's/^ruby-//')"
 PUBLISH=0

@@ -36,7 +36,7 @@ RUN apt-get update -qq && \
     apt-get install --no-install-recommends -y build-essential git libyaml-dev pkg-config && \
     rm -rf /var/lib/apt/lists /var/cache/apt/archives
 
-COPY vendor/* ./vendor/
+COPY vendor/ ./vendor/
 COPY Gemfile Gemfile.lock ./
 
 RUN bundle install && \
@@ -58,7 +58,7 @@ COPY --from=docker-cli /usr/local/libexec/docker/cli-plugins/docker-compose /usr
 COPY --from=build "${BUNDLE_PATH}" "${BUNDLE_PATH}"
 COPY --from=build /rails /rails
 
-LABEL org.opencontainers.image.source="https://github.com/cupatea/openclaw-panel"
+LABEL org.opencontainers.image.source="https://gitlab.bulka.in/cupatea/openclaw-panel"
 LABEL org.opencontainers.image.description="A small web panel for a docker-compose OpenClaw install: status, logs, restarts, updates, pairing approvals, config edits."
 LABEL org.opencontainers.image.licenses="MIT"
 

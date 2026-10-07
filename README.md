@@ -22,12 +22,15 @@ Auth works the same as online: a single admin password (bcrypt) and 30-minute se
 
 ## Deploy
 
-1. Build and push the image: `bin/build --publish`. First run
-   `gh auth token | docker login ghcr.io -u cupatea --password-stdin`.
-2. Put `../docker-compose.yaml` (which includes the `openclaw-panel` service) on the NAS.
-3. Move the tokens into `.env` next to it: `OPENCLAW_GATEWAY_TOKEN=…` and `TELEGRAM_BOT_TOKEN=…`.
+GitLab CI (`.gitlab-ci.yml`) runs the tests and, on `main`, builds the image with
+Kaniko and pushes `registry.bulka.in/cupatea/openclaw-panel/main:latest` (plus a
+`main:<sha>` tag). `bin/build` is for local builds.
+
+1. Put `../docker-compose.yaml` (which includes the `openclaw-panel` service) on the NAS.
+2. Move the tokens into `.env` next to it: `OPENCLAW_GATEWAY_TOKEN=…` and `TELEGRAM_BOT_TOKEN=…`.
    The compose file leaves them empty, so compose reads them from `.env`.
-4. Run `docker compose up -d openclaw-panel`, open `http://<nas>:3006`, and create the password.
+3. Run `docker compose up -d openclaw-panel`, open `http://<nas>:3006`, and create the password.
+   The registry is private, so the NAS needs `docker login registry.bulka.in` once (like for food).
 
 The panel mounts the folder at `/openclaw` and finds its real host path from its
 own container mounts. Override this with `OPENCLAW_HOST_DIR` if needed. Compose then runs

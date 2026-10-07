@@ -1,0 +1,59 @@
+# CI for openclaw-panel: run the tests, then bake the image the OpenClaw
+# docker-compose pulls (registry.bulka.in/cupatea/openclaw-panel/main:latest).
+
+stages:
+  - verify
+  - build
+
+# Pipelines only for merge requests and the default branch.
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+test:
+  image: "ruby:4.0.7"
+  stage: verify
+  variables:
+    BUNDLE_PATH: vendor/ruby
+    RAILS_ENV: test
+  cache:
+    key:
+      files:
+        - Gemfile.lock
+    paths:
+      - vendor/ruby
+  before_script:
+    - bundle install --jobs 4 --retry 3
+  script:
+    - bin/rails db:test:prepare
+    - bin/rails test
+
+# Kaniko (no privileged Docker daemon) pushes to the project's Container
+# Registry, caching layers in <image>/cache so `bundle install` only reruns
+# when Gemfile.lock changes. The Dockerfile has no defaults for RUBY_VERSION /
+# DOCKER_VERSION — they come from .ruby-version and .docker-version.
+build:
+  stage: build
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  before_script:
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"${CI_REGISTRY}\":{\"auth\":\"$(printf '%s:%s' "${CI_REGISTRY_USER}" "${CI_REGISTRY_PASSWORD}" | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
+  script:
+    - >-
+      /kaniko/executor
+      --context "${CI_PROJECT_DIR}"
+      --dockerfile "${CI_PROJECT_DIR}/Dockerfile"
+      --build-arg "RUBY_VERSION=$(sed 's/^ruby-//' .ruby-version)"
+      --build-arg "DOCKER_VERSION=$(cat .docker-version)"
+      --cache=true
+      --cache-repo "${CI_REGISTRY_IMAGE}/cache"
+      --cache-copy-layers=true
+      --cache-ttl=168h
+      --snapshot-mode=redo
+      --destination "${CI_REGISTRY_IMAGE}/main:latest"
+      --destination "${CI_REGISTRY_IMAGE}/main:${CI_COMMIT_SHORT_SHA}"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
